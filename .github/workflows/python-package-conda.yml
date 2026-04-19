@@ -1,34 +1,59 @@
-name: Python Package using Conda
+name: Telegram bot sync # نام workflow تغییر کرد تا با اسم فایل مطابقت داشته باشه
 
-on: [push]
+on:
+  workflow_dispatch: # اجرای دستی
+  schedule:
+    - cron: "0 * * * *" # هر ساعت در دقیقه 0
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 5
+  sync_messages:
+    runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: '3.10'
-    - name: Add conda to system path
-      run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
-    - name: Install dependencies
-      run: |
-        conda env update --file environment.yml --name base
-    - name: Lint with flake8
-      run: |
-        conda install flake8
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: |
-        conda install pytest
-        pytest
+    steps:
+      - name: 🚀 Start Flow
+        run: echo "Starting Telegram bot sync flow..."
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
+
+      - name: Run Telegram Bot Script
+        run: |
+          echo "Running telegram_bot.py..."
+          python telegram_bot.py
+          echo "Script finished."
+
+      - name: Verify data.json creation
+        run: |
+          echo "---- Verifying data.json ----"
+          if [ -f data.json ]; then
+            echo "data.json exists."
+            echo "Content preview (first 5 lines):"
+            head -n 5 data.json || echo "Could not read head of data.json"
+            echo "---- End of data.json verification ----"
+          else
+            echo "❗ ERROR: data.json was not created!"
+            exit 1
+          fi
+
+      - name: Check if data.json has content
+        run: |
+          echo "---- Checking if data.json is non-empty ----"
+          if [ -s data.json ]; then
+            echo "data.json is not empty. Content size: $(du -h data.json | cut -f1)"
+          else
+            echo "❗ ERROR: data.json is empty or has zero size!"
+            exit 1
+          fi
+
+      - name: 🏁 Flow completed successfully
+        run: echo "Flow finished successfully."
